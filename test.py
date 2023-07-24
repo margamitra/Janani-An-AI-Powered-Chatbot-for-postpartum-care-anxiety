@@ -1,10 +1,12 @@
 import openai
+import re
 import pyttsx3
 import base64
-from pywebio.input import input
+import speech_recognition as sr
 from pywebio.output import put_html, put_markdown, put_buttons, output
 
-openai.api_key = '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'
+
+openai.api_key = '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'
 engine = pyttsx3.init()
 
 
@@ -58,10 +60,32 @@ def get_bot_response(message: str, pl: list[str]) -> str:
 
 
 def text_to_speech(text: str):
-    engine.setProperty('rate', 190)
+    engine.setProperty('rate', 205)
     engine.say(text)
     engine.runAndWait()
 
+
+def get_user_audio() -> str:
+    r = sr.Recognizer()
+
+    with sr.Microphone() as source:
+        print("Listening...")
+        r.pause_threshold = 1
+        audio = r.listen(source)
+
+    try:
+        user_audio_text = r.recognize_google(audio)
+        print(f"User: {user_audio_text}")
+        return user_audio_text
+    except sr.UnknownValueError:
+        return "Sorry, I couldn't understand what you said."
+    except sr.RequestError as e:
+        return "Sorry, there was an error with the speech recognition service."
+
+
+def remove_bullet_points(text: str) -> str:
+    # Remove bullet points using regular expressions
+    return re.sub(r'\n\s*\*\s*', ' ', text)
 
 def chatbot():
     with open('icon.png', 'rb') as image_file:
@@ -75,7 +99,7 @@ def chatbot():
     """
     put_html(header_html)
 
-    prompt_list: list[str] = ['You need to help patients with postpartum care, anxiety and depression. Answer questions with empathy and you will show them that you care for their well being. End every answer on an emphatic & inspiring note. If user asks anything related to delivery, congratulate them on their baby.',
+    prompt_list: list[str] = ['You need to help patients with postpartum care, anxiety and depression. Answer questions with empathy and you will show them that you care for their well being. Try to sound as human as possible. End every answer on an emphatic & inspiring note. If user asks anything related to delivery, congratulate them on their baby.',
                               '\nHuman: I am feeling depressed. Nothing just feels right. I don not like myself.',
                               '\nAI: I\nm so sorry to hear that. I totally understand how you feel. I am here to help. Remember you are not alone',
                               '\nAI: I am very glad to help you. I am always by your side & ready to assist you in every way possible !',
@@ -83,11 +107,14 @@ def chatbot():
                               '\nAI: Hello There ! I am Janani. Designed to help young mothers with everything related to postpartum care & people suffering from anxiety and depression. Feel free to ask me anything. I am always here in your service. Wishing you all the best with your recovery !']
 
     while True:
-        user_input = input('You: ')
+        user_input = get_user_audio()
         put_markdown(f'**You**: {user_input}')
         response = get_bot_response(user_input, prompt_list)
         put_markdown(f'**Janani**: {response}')
-        text_to_speech(response)
+
+        response_without_bullet_points = remove_bullet_points(response)
+
+        text_to_speech(response_without_bullet_points)
 
 
 if __name__ == '__main__':
